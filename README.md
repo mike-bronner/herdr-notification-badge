@@ -7,8 +7,9 @@ A [Herdr](https://herdr.dev) mod for macOS that tells you when an agent needs yo
 The preview is an illustration, not a screen capture.
 
 - **Dock badge:** the number of top-level agents in status `blocked`. It refreshes every 2 seconds and goes away at zero.
-- **Needs you:** a banner when a top-level agent turns `blocked`, or first shows up already `blocked`.
-- **Finished:** a banner when an agent stops working out of your sight. Out of sight means Herdr is in the background or shows a different tab.
+- **Needs you:** a banner when a top-level agent turns `blocked`, or first shows up already `blocked`, while Herdr's window is not active.
+- **Finished:** a banner when an agent stops working while Herdr's window is not active.
+- **Herdr active:** no banners of either kind. Herdr shows its own toast then. An alert that comes up while Herdr is active is dropped. It does not post later when you switch away. An agent that still needs you stays on the Dock badge.
 - **Sub-agents:** never count and never alert.
 - **At start:** agents that already need you count on the badge but get no banner.
 - **Banner text:** for example `Claude Code needs you`, then `api › Tab 2`, then the conversation title. No images.

@@ -94,7 +94,7 @@ test("text that starts with a character terminal-notifier cannot read still post
   for (const start of ["[", "(", "{", '"', "-", "<", "\\"]) {
     for (const [field, make] of Object.entries(fields)) {
       const blocked = { address: "t1", status: "blocked", tab: "x", space_name: "api", tab_name: "Tab 2", title: "login", program: { name: "Claude" }, ...make(start) };
-      const [alert] = compare(new Map([["t1", "working"]]), [blocked], [], () => false).alerts;
+      const [alert] = compare(new Map([["t1", "working"]]), [blocked], [], false).alerts;
       assert.equal(alert[field], cleaned[field], `${field} ${start} cleaned`);
       const raw = strictNotifier(notifierArgs({ ...alert, [field]: `${start}${alert[field]}` }, null));
       assert.ok(raw.code === 2 || !raw.intact, `${field} ${start} raw`);

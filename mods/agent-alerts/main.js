@@ -1,6 +1,6 @@
 import { View, div } from "gpui-kit";
 import { agents, terminals, focused, window, exec, run, appHome, setBadge, checking } from "herdr";
-import { badgeText, bannerFocus, compare, jumpTo, lookingAt, movedOn, needsYou } from "./watch.js";
+import { badgeText, bannerFocus, compare, jumpTo, movedOn, needsYou } from "./watch.js";
 import { askOnce, clickCommand, deliver, groupOf, notifierArgs, rememberSenders, removeEverywhere } from "./banner.js";
 
 const FOLDER = "mods/agent-alerts";
@@ -45,7 +45,7 @@ export default class AgentAlerts extends View {
       const focus = focused();
       const now = Date.now();
       badge = badgeText(needsYou(list, terms));
-      result = compare(this.statuses, list, terms, (agent) => lookingAt(agent, win, focus));
+      result = compare(this.statuses, list, terms, Boolean(win?.active));
       if (bannerFocus(this.banners, list, this.focus, focus)) this.clickedAt = now;
       target = jumpTo({ was: this.active, win, focus, agents: list, terminals: terms, banners: this.banners, now, clickedAt: this.clickedAt });
       this.active = Boolean(win?.active);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
-import { STAND_ASIDE, badgeText, bannerFocus, bannerText, compare, jumpTo, lookingAt, movedOn, needsYou, quote, readable, topLevelAgents } from "../mods/agent-alerts/watch.js";
+import { STAND_ASIDE, badgeText, bannerFocus, bannerText, compare, jumpTo, movedOn, needsYou, quote, readable, topLevelAgents } from "../mods/agent-alerts/watch.js";
 
 const agent = (address, status, more = {}) => ({
   address,
@@ -14,8 +14,8 @@ const agent = (address, status, more = {}) => ({
   ...more,
 });
 const before = (entries) => new Map(entries);
-const unseen = () => false;
-const seen = () => true;
+const inBackground = false;
+const herdrActive = true;
 
 test("leaves out sub-agents, empty entries and missing lists", () => {
   const agents = [agent("t1", "blocked"), agent("t2", "blocked"), null, { status: "blocked" }];
@@ -54,69 +54,84 @@ test("the badge shows the count, and clears at zero", () => {
 });
 
 test("the first check after start posts nothing", () => {
-  const { statuses, alerts } = compare(null, [agent("t1", "blocked"), agent("t2", "done")], [], unseen);
+  const { statuses, alerts } = compare(null, [agent("t1", "blocked"), agent("t2", "done")], [], inBackground);
   assert.deepEqual(alerts, []);
   assert.deepEqual([...statuses], [["t1", "blocked"], ["t2", "done"]]);
 });
 
 test("an agent that first shows up after the first check, already blocked, gets a banner", () => {
-  const { alerts } = compare(before([["t1", "working"]]), [agent("t1", "working"), agent("t9", "blocked")], [], unseen);
+  const { alerts } = compare(before([["t1", "working"]]), [agent("t1", "working"), agent("t9", "blocked")], [], inBackground);
   assert.deepEqual(alerts.map((a) => [a.address, a.title]), [["t9", "Claude Code needs you"]]);
 });
 
 test("an agent that first shows up after the first check in any other status gets no banner", () => {
   for (const status of ["working", "done", "idle"]) {
-    assert.deepEqual(compare(new Map(), [agent("t9", status)], [], unseen).alerts, [], status);
+    assert.deepEqual(compare(new Map(), [agent("t9", status)], [], inBackground).alerts, [], status);
   }
 });
 
 test("alerts when an agent starts needing you", () => {
   for (const was of ["working", "done", "idle"]) {
-    const { alerts } = compare(before([["t1", was]]), [agent("t1", "blocked")], [], seen);
+    const { alerts } = compare(before([["t1", was]]), [agent("t1", "blocked")], [], inBackground);
     assert.deepEqual(alerts, [{ address: "t1", status: "blocked", title: "Claude Code needs you", subtitle: "api › Tab 2", body: "Rename the billing job" }]);
   }
 });
 
 test("does not alert again while an agent stays blocked", () => {
-  assert.deepEqual(compare(before([["t1", "blocked"]]), [agent("t1", "blocked")], [], unseen).alerts, []);
+  assert.deepEqual(compare(before([["t1", "blocked"]]), [agent("t1", "blocked")], [], inBackground).alerts, []);
 });
 
-test("a finish out of sight gets a banner", () => {
+test("a finish while Herdr is in the background gets a banner", () => {
   for (const now of ["done", "idle"]) {
-    const { alerts } = compare(before([["t1", "working"]]), [agent("t1", now)], [], unseen);
+    const { alerts } = compare(before([["t1", "working"]]), [agent("t1", now)], [], inBackground);
     assert.deepEqual(alerts.map((a) => [a.title, a.status]), [["Claude Code finished", now]]);
   }
 });
 
-test("a finish in sight gets no banner", () => {
-  assert.deepEqual(compare(before([["t1", "working"]]), [agent("t1", "done")], [], seen).alerts, []);
+test("while Herdr is active, no banner of either kind goes out, and statuses are still recorded", () => {
+  for (const was of ["working", "done", "idle", undefined]) {
+    const last = before(was ? [["t1", was]] : []);
+    const { alerts, statuses } = compare(last, [agent("t1", "blocked")], [], herdrActive);
+    assert.deepEqual(alerts, [], String(was));
+    assert.deepEqual([...statuses], [["t1", "blocked"]]);
+  }
+  for (const now of ["done", "idle"]) {
+    assert.deepEqual(compare(before([["t1", "working"]]), [agent("t1", now)], [], herdrActive).alerts, [], now);
+  }
+});
+
+test("an alert that arose while Herdr was active is dropped, not posted once Herdr goes to the background", () => {
+  const list = [agent("t1", "blocked"), agent("t2", "done")];
+  const whileActive = compare(before([["t1", "working"], ["t2", "working"]]), list, [], herdrActive);
+  assert.deepEqual(whileActive.alerts, []);
+  const afterwards = compare(whileActive.statuses, list, [], inBackground);
+  assert.deepEqual(afterwards.alerts, []);
+  assert.equal(needsYou(list, []), 1);
+});
+
+test("an agent that needs you again after Herdr goes to the background gets a banner", () => {
+  const whileActive = compare(before([["t1", "working"]]), [agent("t1", "blocked")], [], herdrActive);
+  const working = compare(whileActive.statuses, [agent("t1", "working")], [], inBackground);
+  const { alerts } = compare(working.statuses, [agent("t1", "blocked")], [], inBackground);
+  assert.deepEqual(alerts.map((a) => [a.address, a.title]), [["t1", "Claude Code needs you"]]);
 });
 
 test("a finish counts only after working", () => {
   for (const was of ["blocked", "idle", "done"]) {
-    assert.deepEqual(compare(before([["t1", was]]), [agent("t1", "done")], [], unseen).alerts, [], was);
+    assert.deepEqual(compare(before([["t1", was]]), [agent("t1", "done")], [], inBackground).alerts, [], was);
   }
-  assert.deepEqual(compare(before([["t1", "idle"]]), [agent("t1", "working")], [], unseen).alerts, []);
+  assert.deepEqual(compare(before([["t1", "idle"]]), [agent("t1", "working")], [], inBackground).alerts, []);
 });
 
 test("a blocked sub-agent stays silent", () => {
   const terminals = [{ address: "t2", parent: "t1" }];
-  const { alerts, statuses } = compare(before([["t2", "working"]]), [agent("t2", "blocked")], terminals, unseen);
+  const { alerts, statuses } = compare(before([["t2", "working"]]), [agent("t2", "blocked")], terminals, inBackground);
   assert.deepEqual(alerts, []);
   assert.equal(statuses.has("t2"), false);
 });
 
 test("an agent that leaves the list is forgotten", () => {
-  assert.deepEqual([...compare(before([["t1", "working"]]), [], [], unseen).statuses], []);
-});
-
-test("lookingAt needs an active window showing the agent's tab", () => {
-  const a = agent("t1", "done");
-  assert.equal(lookingAt(a, { active: true }, { tab: "tab-t1" }), true);
-  assert.equal(lookingAt(a, { active: false }, { tab: "tab-t1" }), false);
-  assert.equal(lookingAt(a, { active: true }, { tab: "tab-t9" }), false);
-  assert.equal(lookingAt(a, null, { tab: "tab-t1" }), false);
-  assert.equal(lookingAt(a, { active: true }, null), false);
+  assert.deepEqual([...compare(before([["t1", "working"]]), [], [], inBackground).statuses], []);
 });
 
 test("the banner falls back when names are missing", () => {

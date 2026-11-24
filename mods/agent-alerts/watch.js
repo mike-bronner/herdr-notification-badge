@@ -15,13 +15,11 @@ export const needsYou = (agents, terminals) => waiting(agents, terminals).length
 
 export const badgeText = (count) => (count > 0 ? String(count) : null);
 
-function alertKind(was, now, seen) {
+function alertKind(was, now) {
   if (was === now) return null;
   if (now === "blocked") return "blocked";
-  return was === "working" && FINISHED.has(now) && !seen ? "finished" : null;
+  return was === "working" && FINISHED.has(now) ? "finished" : null;
 }
-
-export const lookingAt = (agent, win, focus) => Boolean(win?.active) && focus?.tab === agent.tab;
 
 export const readable = (text) => String(text ?? "").replace(UNREADABLE_START, "");
 
@@ -34,12 +32,12 @@ export function bannerText(agent, kind) {
   };
 }
 
-export function compare(before, agents, terminals, inSight) {
+export function compare(before, agents, terminals, herdrActive) {
   const statuses = new Map();
   const alerts = [];
   for (const agent of topLevelAgents(agents, terminals)) {
     statuses.set(agent.address, agent.status);
-    const kind = before ? alertKind(before.get(agent.address), agent.status, inSight(agent)) : null;
+    const kind = before && !herdrActive ? alertKind(before.get(agent.address), agent.status) : null;
     if (kind) alerts.push({ ...bannerText(agent, kind), address: agent.address, status: agent.status });
   }
   return { statuses, alerts };

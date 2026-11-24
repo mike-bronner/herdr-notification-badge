@@ -1,6 +1,6 @@
 # Agent alerts
 
-Herdr tells you on macOS when an agent needs you, even when its window is in the background. A red badge on Herdr's Dock icon counts the top-level agents waiting for you. When an agent stops and needs you, a Notification Center banner says so. When an agent finishes out of your sight, a banner says that too. Each banner carries Herdr's icon, names the agent's program, its space and tab and its conversation title, and takes you to that agent when you click it. When Herdr comes to the front while the badge shows a count, Herdr shows the first agent that needs you, so a click on the badged Dock icon lands there. The badge drops, and a banner leaves Notification Center, when its agent's status changes again. The mod draws nothing inside the Herdr window.
+Herdr tells you on macOS when an agent needs you, even when its window is in the background. A red badge on Herdr's Dock icon counts the top-level agents waiting for you. When an agent stops and needs you while Herdr's window is not active, a Notification Center banner says so. When an agent finishes then, a banner says that too. While Herdr's window is active, Herdr shows its own toast and the mod posts no banner. Each banner carries Herdr's icon, names the agent's program, its space and tab and its conversation title, and takes you to that agent when you click it. When Herdr comes to the front while the badge shows a count, Herdr shows the first agent that needs you, so a click on the badged Dock icon lands there. The badge drops, and a banner leaves Notification Center, when its agent's status changes again. The mod draws nothing inside the Herdr window.
 
 ![Agent alerts](preview.png)
 
@@ -21,7 +21,8 @@ The idea comes from benjaminsicard's [desktop-notifications](https://github.com/
 
 - **Blocked:** each top-level agent in status `blocked` adds one to the badge. A top-level agent that turns `blocked` from any other status gets a "needs you" banner. It gets one banner per turn, not one per check.
 - **Working:** no banner, and it does not count on the badge.
-- **Done or idle after working:** a "finished" banner, but only when the agent was out of sight. It was in sight only if the Herdr window was active with the agent's tab on screen. Done and idle agents do not count on the badge.
+- **Done or idle after working:** a "finished" banner. Done and idle agents do not count on the badge.
+- **Herdr active:** while `window().active` is true, no banner of either kind goes out. Herdr shows its own toast then. The mod still records each agent's status, so an alert that came up then is dropped. It does not post when the window stops being active. An agent that is still `blocked` stays on the badge. It gets a banner again only when it turns `blocked` anew while the window is not active.
 - **Done or idle after blocked, or done after idle:** no banner.
 - **Sub-agents:** never count and never alert, even when blocked. A sub-agent is an agent whose terminal has a `parent`. Its parent counts if the parent is blocked.
 - **Other machines:** an address such as `vps/t7` is treated like a local one.
@@ -46,8 +47,7 @@ The idea comes from benjaminsicard's [desktop-notifications](https://github.com/
   - `waiting(agents, terminals)`: the top-level agents with `status === "blocked"`, in the order of `agents`.
   - `needsYou(agents, terminals)`: the number of agents `waiting` returns.
   - `badgeText(count)`: `String(count)` above zero, else `null`.
-  - `compare(before, agents, terminals, isLooking)`: takes the last statuses by address, or `null` for the first check, and returns the new statuses and the alerts. The first check gives no alerts. A blocked alert needs `blocked` now and any other status, or none, before. A finished alert needs `working` before, `done` or `idle` now, and `isLooking(agent)` false.
-  - `lookingAt(agent, window, focused)`: `window.active` and `focused.tab === agent.tab`.
+  - `compare(before, agents, terminals, herdrActive)`: takes the last statuses by address, or `null` for the first check, and returns the new statuses and the alerts. The first check gives no alerts, and neither does any check with `herdrActive` true. Both still return the new statuses. A blocked alert needs `blocked` now and any other status, or none, before. A finished alert needs `working` before and `done` or `idle` now.
   - `readable(text)`: the text without its leading `[`, `(`, `{`, `"`, `<`, `-`, `\` and white space.
   - `bannerText(agent, kind)`: every part goes through `readable`. Title from `program.name`, else `app`, else `Agent`. Subtitle `space_name › tab_name`, leaving out an empty one. Message the first non-empty of `title`, `pane_name` and `address`.
   - `movedOn(banners, statuses)`: addresses whose banner status differs from the status now.
@@ -65,7 +65,7 @@ The idea comes from benjaminsicard's [desktop-notifications](https://github.com/
   - Reads `agents()`, `terminals()`, `focused()` and `window()` from `herdr`, and finds its own folder with `appHome()`.
   - Runs only when `window()?.platform === "macos"` and `checking()` is false, so `herdr-app check` sets no badge and starts no timer.
   - Starts `cx.timer.every(2000)` in `init`, with the last statuses at `null`.
-  - Reads `agents()`, `terminals()`, `window()` and `focused()` once per check, for the badge, the banners and the jump.
+  - Reads `agents()`, `terminals()`, `window()` and `focused()` once per check, for the badge, the banners and the jump. It passes `Boolean(window()?.active)` to `compare`.
   - Keeps the last window `active` value, starting at `null`, the last focus, and the time of the last banner click from `Date.now()`.
   - Calls `run("agent.focus", { terminal })` when `jumpTo` gives an address.
   - Calls `setBadge(text)` when the text differs from the last one it set, and `setBadge(null)` in `close()`.
@@ -107,8 +107,9 @@ The idea comes from benjaminsicard's [desktop-notifications](https://github.com/
 ## Done when
 
 - `herdr-app check ~/.config/herdr-app/mods/agent-alerts` reports no errors.
-- `node --test tests/watch.test.mjs tests/banner.test.mjs` passes: 43 tests.
-- In any tab, a fake agent reports three states in a row, `working`, `blocked` and `working`:
+- `node --test tests/watch.test.mjs tests/banner.test.mjs` passes: 44 tests.
+- Each banner check below runs with another app in front, unless it says Herdr is active.
+- In any tab, a fake agent reports three states in a row, `working`, `blocked` and `working`. Switch to another app during the first 4 seconds:
 
   ```sh
   printf '\033]7501;state=working\033\\'; sleep 4
@@ -126,7 +127,8 @@ The idea comes from benjaminsicard's [desktop-notifications](https://github.com/
 - With a fake agent's tab on screen, switch to another app. Let that agent finish while a second fake agent is blocked. Click the `finished` banner: Herdr stays on the finished agent's tab, and the Dock icon still shows `1`.
 - A fake agent whose first state is `blocked`, started after the mod, gives a `needs you` banner.
 - A conversation title such as `[WIP] login` still posts through a notifier copy, with Herdr's icon, as `WIP] login`.
-- Switch to another tab and let the agent go from working to idle: a `finished` banner appears. Do it again with the agent's tab on screen and Herdr active: no banner.
+- Switch to another app and let the agent go from working to idle: a `finished` banner appears.
+- With Herdr active, on any tab, let one fake agent turn `blocked` and another finish: no banner appears, and the Dock icon shows `1`. Switch to another app: still no banner. Let the blocked agent turn `working` and then `blocked` again: a `needs you` banner appears.
 - A blocked sub-agent adds nothing to the badge and gives no banner.
 - In light mode the banner shows the dark tile. In dark mode it shows the ivory icon.
 - With the two copies deleted, a blocked agent still gives a banner.
