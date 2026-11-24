@@ -1,0 +1,10 @@
+herdr-dark.svg, and the HerdrDark.icns icon that make-notifier.sh builds from it,
+use the ram from Herdr's logo:
+
+  https://github.com/herdrdev/herdr/blob/HEAD/assets/logo.svg
+
+Herdr is licensed under the Apache License, Version 2.0:
+
+  https://www.apache.org/licenses/LICENSE-2.0
+
+The artwork's colors are changed: a dark tile with an ivory ram.
