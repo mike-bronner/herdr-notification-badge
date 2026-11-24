@@ -4,6 +4,8 @@ Herdr tells you on macOS when an agent needs you, even when its window is in the
 
 ![Agent alerts](preview.png)
 
+The preview shows a `Claude Code needs you` banner above Herdr's Dock icon with a badge of 2. It is an illustration drawn from Herdr's app icon, not a screen capture.
+
 The idea comes from benjaminsicard's [desktop-notifications](https://github.com/benjaminsicard/herdr-mods) mod. This mod is a separate build with its own code.
 
 ## What you see

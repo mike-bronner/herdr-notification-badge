@@ -4,7 +4,7 @@ A [Herdr](https://herdr.dev) mod for macOS that tells you when an agent needs yo
 
 ![Agent alerts](preview.png)
 
-The preview is an illustration, not a screen capture.
+The preview shows a `Claude Code needs you` banner above Herdr's Dock icon with a badge of 2. It is an illustration drawn from Herdr's app icon, not a screen capture.
 
 - **Dock badge:** the number of top-level agents in status `blocked`. It refreshes every 2 seconds and goes away at zero.
 - **Needs you:** a banner when a top-level agent turns `blocked`, or first shows up already `blocked`, while Herdr's window is not active.
