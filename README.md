@@ -2,7 +2,7 @@
 
 A [Herdr](https://herdr.dev) mod for macOS that tells you when an agent needs you. It puts the count on Herdr's Dock icon and sends banners to Notification Center, with Herdr's icon on each one.
 
-![Agent alerts](preview.png)
+![Agent alerts](./preview.png)
 
 The preview shows a `Claude Code needs you` banner above Herdr's Dock icon with a badge of 2. It is an illustration drawn from Herdr's app icon, not a screen capture.
 
